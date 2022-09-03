@@ -15,7 +15,7 @@ setuptools.setup(
     url="https://github.com/stevekineeve88/mysql_data_manager_library.git",
     packages=setuptools.find_packages(),
     install_requires=[
-        "mysql-connector-python"
+        "mysql-connector-python==8.0.30"
     ],
     python_requires='>=3.7'
 )

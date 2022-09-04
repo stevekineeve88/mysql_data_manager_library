@@ -87,6 +87,8 @@ class ConnectionManager:
         Returns:
             PooledMySQLConnection
         """
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
         return self.__connection
 
     def select(self, sql: str, binding_params: Dict[str, any] = {}) -> Result:
@@ -97,6 +99,8 @@ class ConnectionManager:
         Returns:
             Result
         """
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
         cursor = self.__connection.cursor(dictionary=True)
         try:
             if len(binding_params) == 0:
@@ -117,6 +121,8 @@ class ConnectionManager:
         Returns:
             Result
         """
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
         cursor = self.__connection.cursor()
         try:
             if len(binding_params) == 0:
@@ -137,6 +143,8 @@ class ConnectionManager:
         Returns:
             Result
         """
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
         cursor = self.__connection.cursor()
         try:
             if len(binding_params) == 0:

@@ -129,6 +129,7 @@ class ConnectionManager:
                 cursor.execute(sql)
             else:
                 cursor.execute(sql, binding_params)
+            self.__connection.commit()
             return self.__build_result(Result(True), cursor.rowcount, cursor.lastrowid)
         except Exception as e:
             return Result(False, str(e))
@@ -150,6 +151,7 @@ class ConnectionManager:
         cursor = self.__connection.cursor()
         try:
             cursor.executemany(sql, data)
+            self.__connection.commit()
             return self.__build_result(Result(True), cursor.rowcount)
         except Exception as e:
             return Result(False, str(e))
@@ -172,6 +174,7 @@ class ConnectionManager:
                 cursor.execute(sql)
             else:
                 cursor.execute(sql, binding_params)
+            self.__connection.commit()
             return self.__build_result(Result(True), cursor.rowcount)
         except Exception as e:
             return Result(False, str(e))

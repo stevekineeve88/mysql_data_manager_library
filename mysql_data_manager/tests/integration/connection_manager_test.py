@@ -82,6 +82,42 @@ class ConnectionManagerTest(unittest.TestCase):
         self.assertEqual(None, result.get_last_insert_id())
         self.assertEqual(0, result.get_affected_rows())
 
+    def test_insert_bulk_inserts_many_rows(self):
+
+        row_data = [
+            "TEST",
+            "TEST1"
+        ]
+
+        insert_result = self.connection_manager.insert_bulk(f"""
+            INSERT INTO fake_table (fake_column) VALUES (%s)
+        """, [
+            (row_data[0],),
+            (row_data[1],)
+        ])
+
+        self.assertEqual(len(row_data), insert_result.get_affected_rows())
+
+        select_result = self.connection_manager.select(f"""
+            SELECT fake_column FROM fake_table
+        """)
+
+        self.assertEqual(len(row_data), select_result.get_affected_rows())
+        data = select_result.get_data()
+        for datum in data:
+            self.assertIn(datum["fake_column"], row_data)
+
+    def test_insert_bulk_fails_with_sql_syntax_error(self):
+        result = self.connection_manager.insert_bulk(f"""
+            INSERT INTO wrong_table (fake_column) VALUES (%s)
+        """, [
+            ("TEST",)
+        ])
+
+        self.assertFalse(result.get_status())
+        self.assertNotEqual("", result.get_message())
+        self.assertEqual(0, result.get_affected_rows())
+
     def test_select_returns_failure_with_sql_syntax_error(self):
         result = self.connection_manager.select(f"""
             SELECT * FROM wrong_table
@@ -99,6 +135,41 @@ class ConnectionManagerTest(unittest.TestCase):
         self.assertFalse(result.get_status())
         self.assertNotEqual("", result.get_message())
         self.assertEqual(0, len(result.get_data()))
+
+    def test_query_list_performs_all_queries(self):
+        self.connection_manager.query_list([
+            "INSERT INTO fake_table (fake_column) VALUES ('test1')",
+            "INSERT INTO fake_table (fake_column) VALUES ('test2')"
+        ])
+
+        select_result = self.connection_manager.select(f"""
+            SELECT fake_column FROM fake_table
+        """)
+        self.assertEqual(2, select_result.get_affected_rows())
+
+        self.connection_manager.query_list([
+            "DELETE FROM fake_table",
+            "INSERT INTO fake_table (fake_column) VALUES ('test3')"
+        ])
+
+        select_result = self.connection_manager.select(f"""
+            SELECT fake_column FROM fake_table
+        """)
+        self.assertEqual(1, select_result.get_affected_rows())
+
+    def test_query_list_fails_and_rollback_changes(self):
+        result = self.connection_manager.query_list([
+            "INSERT INTO fake_table (fake_column) VALUES ('test1')",
+            "INSERT INTO wrong_table (fake_column) VALUES ('test2')"
+        ])
+
+        self.assertFalse(result.get_status())
+        self.assertNotEqual("", result.get_message())
+
+        select_result = self.connection_manager.select(f"""
+            SELECT fake_column FROM fake_table
+        """)
+        self.assertEqual(0, select_result.get_affected_rows())
 
     def tearDown(self) -> None:
         result = self.connection_manager.query(f"""

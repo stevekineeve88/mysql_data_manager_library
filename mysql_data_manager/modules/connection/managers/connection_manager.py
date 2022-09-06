@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, List
 import mysql.connector
 from mysql.connector.pooling import PooledMySQLConnection
 from mysql_data_manager.modules.connection.objects.result import Result
@@ -135,6 +135,27 @@ class ConnectionManager:
         finally:
             cursor.close()
 
+    def insert_bulk(self, sql: str, data: List[tuple]) -> Result:
+        """ Perform bulk insert query
+        Args:
+            sql (str):                  SQL statement
+            data (List[tuple]):         List of insert arguments
+        Returns:
+            Result
+        """
+        if len(data) == 0:
+            return Result(True)
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
+        cursor = self.__connection.cursor()
+        try:
+            cursor.executemany(sql, data)
+            return self.__build_result(Result(True), cursor.rowcount)
+        except Exception as e:
+            return Result(False, str(e))
+        finally:
+            cursor.close()
+
     def query(self, sql: str, binding_params: Dict[str, any] = {}) -> Result:
         """ MySQL INSERT handler
         Args:
@@ -153,6 +174,27 @@ class ConnectionManager:
                 cursor.execute(sql, binding_params)
             return self.__build_result(Result(True), cursor.rowcount)
         except Exception as e:
+            return Result(False, str(e))
+        finally:
+            cursor.close()
+
+    def query_list(self, commands: List[str]) -> Result:
+        """ Perform multiple queries as prepared statements
+        Args:
+            commands (List[str]):       SQL command list
+        Returns:
+            Result
+        """
+        if not self.__connection.is_connected():
+            self.__connection.reconnect()
+        cursor = self.__connection.cursor(prepared=True)
+        try:
+            for command in commands:
+                cursor.execute(command.strip())
+            self.__connection.commit()
+            return Result(True)
+        except Exception as e:
+            self.__connection.rollback()
             return Result(False, str(e))
         finally:
             cursor.close()
